@@ -102,6 +102,10 @@ app.post('/signin', async (req, res) => {
 // add task
 app.post('/add-task', auth, async (req, res) => {
   const { description } = req.body;
+  const descriptionValid = taskDescriptionSchema.safeParse(description);
+  if (!descriptionValid.success) {
+    return res.status(400).json({ message: "invalid description" });
+  }
 
   const task = await Task.create({
     username: req.user.username,
