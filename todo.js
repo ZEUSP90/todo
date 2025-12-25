@@ -1,15 +1,36 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
+const {z} = require('zod');
+require('dotenv').config();
 
 const app = express();
 app.use(express.json());
 
-const JWT_SECRET = "zero";
+const JWT_SECRET = process.env.JWT_SECRET;
 
-mongoose.connect('mongodb+srv://umangaw2_db_user:ErhiBwXWN3KTkVAC@cluster0.77ikgws.mongodb.net/')
-  .then(() => console.log("MongoDB connected"))
-  .catch(err => console.error(err));
+async function connectDB(){
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    })
+    console.log("Connected to MongoDB");
+  }catch(err){
+    console.error("Error connecting to MongoDB:", err);
+  }
+}
+
+connectDB();
+
+const usernameSchema = z.string().min(3).max(30);
+const passwordSchema = z.string().min(6).max(100);
+
+const taskDescriptionSchema = z.string().min(1).max(500);
+
+
+
+
 
 const UserSchema = new mongoose.Schema({
   username: String,
@@ -42,6 +63,16 @@ function auth(req, res, next) {
 app.post('/signup', async (req, res) => {
   const { username, password } = req.body;
 
+  const usernameValid = usernameSchema.safeParse(username);
+  const passwordValid = passwordSchema.safeParse(password);
+
+  if (!usernameValid.success) {
+    return res.status(400).json({ message: "invalid username" });
+  }
+  if (!passwordValid.success){
+    return res.status(400).json({ message: "invalid password" });
+  }
+
   const exists = await User.findOne({ username });
   if (exists) return res.status(400).json({ message: "user exists" });
 
@@ -52,6 +83,14 @@ app.post('/signup', async (req, res) => {
 // signin
 app.post('/signin', async (req, res) => {
   const { username, password } = req.body;
+  const usernameValid = usernameSchema.safeParse(username);
+  const passwordValid = passwordSchema.safeParse(password);
+  if (!usernameValid.success) {
+    return res.status(400).json({ message: "invalid username" });
+  }
+  if (!passwordValid.success){
+    return res.status(400).json({ message: "invalid password" });
+  }
 
   const user = await User.findOne({ username, password });
   if (!user) return res.status(403).json({ message: "invalid creds" });
